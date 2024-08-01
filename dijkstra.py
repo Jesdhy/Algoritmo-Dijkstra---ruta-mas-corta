@@ -2,8 +2,8 @@ import tkinter as tk
 from tkinter import ttk, simpledialog, messagebox
 import networkx as nx
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from PIL import Image, ImageTk
+from flujoMaximo import MaxFlow
 
 class GraphApp:
     def __init__(self, root):
@@ -28,6 +28,9 @@ class GraphApp:
         self.btn_result = ttk.Button(self.frame, image=self.icons['icon1'], style="TButton", command=self.shortest_path)
         self.btn_result.pack(side=tk.LEFT, padx=5, pady=5)
 
+        self.btn_max_flow = ttk.Button(self.frame, image=self.icons['icon4'], style="TButton", command=self.max_flow)
+        self.btn_max_flow.pack(side=tk.LEFT, padx=5, pady=5)
+
         self.btn_clear = ttk.Button(self.frame, image=self.icons['icon2'], style="TButton", command=self.clear_all)
         self.btn_clear.pack(side=tk.LEFT, padx=5, pady=5)
 
@@ -42,6 +45,7 @@ class GraphApp:
         icons['icon1'] = ImageTk.PhotoImage(Image.open("assets/images/icon1.png").resize((30, 30)))
         icons['icon2'] = ImageTk.PhotoImage(Image.open("assets/images/icon2.png").resize((30, 30)))
         icons['icon3'] = ImageTk.PhotoImage(Image.open("assets/images/icon3.png").resize((30, 30)))
+        icons['icon4'] = ImageTk.PhotoImage(Image.open("assets/images/icon4.png").resize((30, 30)))
         return icons
 
     def add_node(self, event):
@@ -76,7 +80,6 @@ class GraphApp:
                 self.start_node = None
                 self.end_node = None
 
-    #ALGORITMO DIJKSTRA
     def shortest_path(self):
         start_node = simpledialog.askstring("Input", "Ingrese el nodo de inicio:", parent=self.root)
         end_node = simpledialog.askstring("Input", "Ingrese el nodo de destino:", parent=self.root)
@@ -89,25 +92,14 @@ class GraphApp:
                 messagebox.showerror("Error", "No existe una ruta entre los nodos especificados")
 
     def plot_graph(self, path_edges):
-        fig, ax = plt.subplots()
+        plt.figure()
         pos = self.positions
         labels = nx.get_edge_attributes(self.graph, 'weight')
-        nx.draw(self.graph, pos, with_labels=True, node_size=700, node_color='skyblue', font_size=15, font_color='black', font_weight='bold', edge_color='gray', ax=ax)
-        nx.draw_networkx_edge_labels(self.graph, pos, edge_labels=labels, ax=ax)
-        nx.draw_networkx_edges(self.graph, pos, edgelist=path_edges, edge_color='r', width=2, ax=ax)
-        
-        fig.canvas.toolbar_visible = False
-        fig.canvas.header_visible = False
-        fig.canvas.footer_visible = False
-        fig.patch.set_visible(False)
-        ax.axis('off')
-
-        # GRAFICO RESULTADO
-        graph_window = tk.Toplevel(self.root)
-        graph_window.title("Ruta más corta")
-        canvas = FigureCanvasTkAgg(fig, master=graph_window)
-        canvas.draw()
-        canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+        nx.draw(self.graph, pos, with_labels=True, node_size=700, node_color='skyblue', font_size=15, font_color='black', font_weight='bold', edge_color='gray')
+        nx.draw_networkx_edge_labels(self.graph, pos, edge_labels=labels)
+        nx.draw_networkx_edges(self.graph, pos, edgelist=path_edges, edge_color='r', width=2)
+        plt.title("Ruta más corta")
+        plt.show()
 
     def clear_all(self):
         self.graph.clear()
@@ -130,3 +122,18 @@ class GraphApp:
                     x2, y2 = self.positions[edge[1]]
                     self.canvas.create_line(x1, y1, x2, y2, fill="black")
                     self.canvas.create_text((x1+x2)/2, (y1+y2)/2, text=str(edge[2]['weight']), font=("Arial", 10))
+
+    #PIDE LOS DATOS Y LLAMA A LA LOGICA DE LA CLASE flujoMaximo
+    def max_flow(self):
+        start_node = simpledialog.askstring("Input", "Ingrese el nodo de inicio:", parent=self.root)
+        end_node = simpledialog.askstring("Input", "Ingrese el nodo de destino:", parent=self.root)
+        if start_node and end_node:
+            try:
+                max_flow_calc = MaxFlow(self.graph)
+                flow_value, flow_dict = max_flow_calc.max_flow(start_node, end_node)
+                max_flow_calc.plot_graph_with_flow(flow_dict)
+                messagebox.showinfo("Resultado", f"Flujo máximo: {flow_value}")
+            except nx.NetworkXUnbounded:
+                messagebox.showerror("Error", "El grafo contiene un camino con capacidad infinita")
+            except nx.NetworkXNoPath:
+                messagebox.showerror("Error", "No existe una ruta entre los nodos especificados")
